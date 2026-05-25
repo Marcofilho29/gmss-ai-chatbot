@@ -99,7 +99,7 @@ async function consultarClaude(numero, mensagem) {
     const response = await axios.post(
       'https://api.anthropic.com/v1/messages',
       {
-        model: 'claude-sonnet-4-5',
+        model: 'claude-sonnet-4-6',
         max_tokens: 500,
         system: SYSTEM_PROMPT,
         messages: conversa.historico
@@ -137,6 +137,11 @@ async function consultarClaude(numero, mensagem) {
 
 async function notificarConsultor(numero, historico) {
   if (!CONSULTOR_NUM) return;
+  
+  // Não notifica se o próprio consultor enviou a mensagem
+  const numLimpo = numero.replace(/\D/g, '');
+  const consLimpo = CONSULTOR_NUM.replace(/\D/g, '');
+  if (numLimpo === consLimpo) return;
 
   // Extrai resumo da conversa
   const resumo = historico
@@ -191,6 +196,8 @@ app.post('/webhook', async (req, res) => {
 
     const numero = jid.replace('@s.whatsapp.net', '').replace('@c.us', '');
 
+    // Nunca ignora mensagens — mesmo do consultor ele recebe atendimento
+
     // Extrai texto em vários formatos
     const msgObj = dados.message || dados;
     const texto  = msgObj.conversation ||
@@ -225,7 +232,7 @@ app.get('/', (req, res) => {
   res.json({
     status: 'online',
     servico: 'GMSS AI Chatbot',
-    modelo: 'claude-sonnet-4-20250514',
+    modelo: 'claude-sonnet-4-6',
     conversas_ativas: Object.keys(conversas).length,
     uptime: Math.floor(process.uptime()) + 's'
   });
@@ -233,6 +240,6 @@ app.get('/', (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`\n🟢 GMSS AI Chatbot rodando na porta ${PORT}`);
-  console.log(`🤖 Modelo: claude-sonnet-4-5`);
+  console.log(`🤖 Modelo: claude-sonnet-4-6`);
   console.log(`📡 Webhook: POST /webhook\n`);
 });
