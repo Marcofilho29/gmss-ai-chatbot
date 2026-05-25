@@ -7,12 +7,13 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // ── CONFIGURAÇÕES ──────────────────────────────────────────────
-const EVOLUTION_URL  = process.env.EVOLUTION_URL;
-const EVOLUTION_KEY  = process.env.EVOLUTION_KEY;
-const INSTANCE       = process.env.INSTANCE || 'gmss';
-const ANTHROPIC_KEY  = process.env.ANTHROPIC_KEY;
-const CONSULTOR_NUM  = process.env.CONSULTOR_NUM;
-const PORT           = process.env.PORT || 3000;
+const EVOLUTION_URL      = process.env.EVOLUTION_URL;
+const EVOLUTION_KEY      = process.env.EVOLUTION_KEY;
+const EVOLUTION_INST_KEY = process.env.EVOLUTION_INST_KEY; // Token da instância
+const INSTANCE           = process.env.INSTANCE || 'gmss';
+const ANTHROPIC_KEY      = process.env.ANTHROPIC_KEY;
+const CONSULTOR_NUM      = process.env.CONSULTOR_NUM;
+const PORT               = process.env.PORT || 3000;
 
 // ── HISTÓRICO DE CONVERSAS (em memória) ───────────────────────
 const conversas = {};
@@ -64,35 +65,29 @@ INSTRUÇÕES DE COMPORTAMENTO:
 // ── FUNÇÕES ────────────────────────────────────────────────────
 async function enviarMensagem(numero, texto) {
   try {
-    // Garante formato correto do número (apenas dígitos, sem @)
     const numLimpo = numero.replace(/\D/g, '');
     
-    await axios.post(
+    const payload = {
+      number: numLimpo,
+      text: texto
+    };
+
+    console.log('Enviando para:', numLimpo, '| URL:', `${EVOLUTION_URL}/message/sendText/${INSTANCE}`);
+
+    const response = await axios.post(
       `${EVOLUTION_URL}/message/sendText/${INSTANCE}`,
+      payload,
       {
-        number: numLimpo,
-        text: texto
-      },
-      { headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_KEY } }
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': EVOLUTION_INST_KEY || EVOLUTION_KEY
+        }
+      }
     );
-    console.log('Mensagem enviada para:', numLimpo);
+    console.log('Enviado com sucesso! Status:', response.status);
   } catch (err) {
-    console.error('Erro ao enviar mensagem:', err.response?.data || err.message);
-    // Tenta formato alternativo
-    try {
-      const numLimpo = numero.replace(/\D/g, '');
-      await axios.post(
-        `${EVOLUTION_URL}/message/sendText/${INSTANCE}`,
-        {
-          number: `${numLimpo}@s.whatsapp.net`,
-          textMessage: { text: texto }
-        },
-        { headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_KEY } }
-      );
-      console.log('Mensagem enviada (formato alternativo)');
-    } catch (err2) {
-      console.error('Erro formato alternativo:', err2.response?.data || err2.message);
-    }
+    const errData = err.response?.data;
+    console.error('Erro ao enviar:', JSON.stringify(errData || err.message));
   }
 }
 
