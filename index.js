@@ -3,7 +3,8 @@ const express = require('express');
 const axios = require('axios');
 
 const app = express();
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // ── CONFIGURAÇÕES ──────────────────────────────────────────────
 const EVOLUTION_URL  = process.env.EVOLUTION_URL;
@@ -155,40 +156,67 @@ app.post('/webhook', async (req, res) => {
   try {
     const body = req.body;
 
-    // DEBUG — log completo do payload
-    console.log('PAYLOAD:', JSON.stringify(body).substring(0, 500));
+    // Log completo para debug
+    console.log('=== WEBHOOK RECEBIDO ===');
+    console.log('BODY:', JSON.stringify(body).substring(0, 800));
 
-    // Evolution API v2 usa diferentes formatos de evento
-    const evento = body.event || body.type || '';
-    const dados  = body.data || body;
+    if (!body || Object.keys(body).length === 0) {
+      console.log('Body vazio — ignorando');
+      return;
+    }
 
-    // Aceita qualquer formato de mensagem recebida
-    if (!evento.toLowerCase().includes('message')) return;
+    // Extrai evento e dados nos diferentes formatos da Evolution API
+    const evento = (body.event || body.type || body.action || '').toLowerCase();
+    console.log('EVENTO:', evento);
 
+    // Ignora eventos que não são mensagens
+    if (evento && !evento.includes('message')) {
+      console.log('Evento ignorado:', evento);
+      return;
+    }
+
+    // Tenta extrair dados da mensagem em vários formatos
+    const dados = body.data || body;
+
+    // Extrai chave/identificadores
     const key     = dados.key || dados.message?.key || {};
-    const fromMe  = key.fromMe || dados.fromMe || false;
-    const jid     = key.remoteJid || dados.remoteJid || '';
+    const fromMe  = key.fromMe ?? dados.fromMe ?? false;
+    const jid     = key.remoteJid || dados.remoteJid || dados.from || '';
 
-    if (fromMe || jid.includes('@g.us') || jid.includes('broadcast')) return;
+    console.log('FROM_ME:', fromMe, 'JID:', jid);
+
+    if (fromMe) { console.log('Mensagem própria — ignorando'); return; }
+    if (jid.includes('@g.us') || jid.includes('broadcast')) { console.log('Grupo/broadcast — ignorando'); return; }
+    if (!jid) { console.log('JID vazio — ignorando'); return; }
 
     const numero = jid.replace('@s.whatsapp.net', '').replace('@c.us', '');
 
+    // Extrai texto em vários formatos
     const msgObj = dados.message || dados;
     const texto  = msgObj.conversation ||
                    msgObj.extendedTextMessage?.text ||
                    msgObj.text ||
                    dados.body ||
-                   dados.text;
+                   dados.text ||
+                   dados.content ||
+                   '';
 
-    if (!numero || !texto) return;
+    console.log('NUMERO:', numero, 'TEXTO:', texto);
 
-    console.log(`[${new Date().toLocaleTimeString('pt-BR')}] ${numero}: ${texto}`);
+    if (!numero || !texto) {
+      console.log('Número ou texto vazio — ignorando');
+      return;
+    }
 
+    console.log(`Processando mensagem de ${numero}: ${texto}`);
     const resposta = await consultarClaude(numero, texto);
+    console.log('Resposta Claude:', resposta.substring(0, 100));
     await enviarMensagem(numero, resposta);
+    console.log('Mensagem enviada com sucesso!');
 
   } catch (err) {
     console.error('Erro webhook:', err.message);
+    console.error(err.stack);
   }
 });
 
