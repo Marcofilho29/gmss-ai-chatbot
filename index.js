@@ -155,6 +155,9 @@ app.post('/webhook', async (req, res) => {
   try {
     const body = req.body;
 
+    // DEBUG — log completo do payload
+    console.log('PAYLOAD:', JSON.stringify(body).substring(0, 500));
+
     // Evolution API v2 usa diferentes formatos de evento
     const evento = body.event || body.type || '';
     const dados  = body.data || body;
