@@ -64,17 +64,35 @@ INSTRUÇÕES DE COMPORTAMENTO:
 // ── FUNÇÕES ────────────────────────────────────────────────────
 async function enviarMensagem(numero, texto) {
   try {
+    // Garante formato correto do número (apenas dígitos, sem @)
+    const numLimpo = numero.replace(/\D/g, '');
+    
     await axios.post(
       `${EVOLUTION_URL}/message/sendText/${INSTANCE}`,
       {
-        number: numero,
-        options: { delay: 1000, presence: 'composing' },
-        textMessage: { text: texto }
+        number: numLimpo,
+        text: texto
       },
       { headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_KEY } }
     );
+    console.log('Mensagem enviada para:', numLimpo);
   } catch (err) {
     console.error('Erro ao enviar mensagem:', err.response?.data || err.message);
+    // Tenta formato alternativo
+    try {
+      const numLimpo = numero.replace(/\D/g, '');
+      await axios.post(
+        `${EVOLUTION_URL}/message/sendText/${INSTANCE}`,
+        {
+          number: `${numLimpo}@s.whatsapp.net`,
+          textMessage: { text: texto }
+        },
+        { headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_KEY } }
+      );
+      console.log('Mensagem enviada (formato alternativo)');
+    } catch (err2) {
+      console.error('Erro formato alternativo:', err2.response?.data || err2.message);
+    }
   }
 }
 
