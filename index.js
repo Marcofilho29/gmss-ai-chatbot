@@ -155,16 +155,27 @@ app.post('/webhook', async (req, res) => {
   try {
     const body = req.body;
 
-    if (
-      body.event !== 'messages.upsert' ||
-      !body.data?.key ||
-      body.data.key.fromMe ||
-      body.data.key.remoteJid?.includes('@g.us')
-    ) return;
+    // Evolution API v2 usa diferentes formatos de evento
+    const evento = body.event || body.type || '';
+    const dados  = body.data || body;
 
-    const numero = body.data.key.remoteJid?.replace('@s.whatsapp.net', '');
-    const texto  = body.data.message?.conversation ||
-                   body.data.message?.extendedTextMessage?.text;
+    // Aceita qualquer formato de mensagem recebida
+    if (!evento.toLowerCase().includes('message')) return;
+
+    const key     = dados.key || dados.message?.key || {};
+    const fromMe  = key.fromMe || dados.fromMe || false;
+    const jid     = key.remoteJid || dados.remoteJid || '';
+
+    if (fromMe || jid.includes('@g.us') || jid.includes('broadcast')) return;
+
+    const numero = jid.replace('@s.whatsapp.net', '').replace('@c.us', '');
+
+    const msgObj = dados.message || dados;
+    const texto  = msgObj.conversation ||
+                   msgObj.extendedTextMessage?.text ||
+                   msgObj.text ||
+                   dados.body ||
+                   dados.text;
 
     if (!numero || !texto) return;
 
