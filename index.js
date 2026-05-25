@@ -99,7 +99,7 @@ async function consultarClaude(numero, mensagem) {
     const response = await axios.post(
       'https://api.anthropic.com/v1/messages',
       {
-        model: 'claude-sonnet-4-20250514',
+        model: 'claude-sonnet-4-5',
         max_tokens: 500,
         system: SYSTEM_PROMPT,
         messages: conversa.historico
@@ -233,6 +233,6 @@ app.get('/', (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`\n🟢 GMSS AI Chatbot rodando na porta ${PORT}`);
-  console.log(`🤖 Modelo: claude-sonnet-4-20250514`);
+  console.log(`🤖 Modelo: claude-sonnet-4-5`);
   console.log(`📡 Webhook: POST /webhook\n`);
 });
